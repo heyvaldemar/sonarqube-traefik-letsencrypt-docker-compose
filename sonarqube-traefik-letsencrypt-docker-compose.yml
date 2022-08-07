@@ -27,7 +27,7 @@ volumes:
 services:
   postgres:
     # Image tag (replace with yours)
-    image: postgres:13.4
+    image: postgres:14
     volumes:
       - sonarqube-postgres:/var/lib/postgresql
       - sonarqube-postgres-data:/var/lib/postgresql/data
@@ -46,7 +46,7 @@ services:
 
   sonarqube:
     # Image tag (replace with yours)
-    image: sonarqube:9.0-community
+    image: sonarqube:9.5-community
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
@@ -85,7 +85,7 @@ services:
 
   traefik:
     # Image tag (replace with yours)
-    image: traefik:2.5
+    image: traefik:2.8
     command:
       - "--log.level=WARN"
       - "--accesslog=true"
@@ -142,7 +142,7 @@ services:
 
   backups:
     # Image tag (replace with yours)
-    image: postgres:13.4
+    image: postgres:14
     # Database backups prune interval (replace with yours). Default is 7 days.
     # find /srv/sonarqube-postgres/backups -type f -mtime +7 | xargs rm -f
 
