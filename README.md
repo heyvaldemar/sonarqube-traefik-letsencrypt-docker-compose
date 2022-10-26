@@ -29,7 +29,6 @@ hey, I’m Vladimir Mikhalev, but my friends call me Valdemar.
 
 # Communication
 👾 Chat with IT pros on [Discord](https://discord.gg/AJQGCCBcqf)\
-🚀 Chat with IT pros on [Telegram](https://t.me/heyValdemarCOMchat)\
 📧 Reach me at ask@sre.gg
 
 # Give Thanks
