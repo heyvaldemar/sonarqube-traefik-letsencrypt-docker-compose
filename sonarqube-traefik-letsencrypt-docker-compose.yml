@@ -6,6 +6,8 @@ networks:
 
 volumes:
   sonarqube-data:
+  sonarqube-extensions:
+  sonarqube-logs:
   sonarqube-postgres:
   sonarqube-postgres-backup:
   sonarqube-data-backups:
@@ -24,7 +26,7 @@ services:
     networks:
       - sonarqube-network
     healthcheck:
-      test: [ "CMD", "pg_isready", "-q", "-d", "${SONARQUBE_DB_NAME}", "-U", "${SONARQUBE_DB_USER}" ]
+      test: ["CMD", "pg_isready", "-q", "-d", "${SONARQUBE_DB_NAME}", "-U", "${SONARQUBE_DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -34,51 +36,40 @@ services:
   sonarqube:
     image: ${SONARQUBE_IMAGE_TAG}
     volumes:
-      - sonarqube-data:${DATA_PATH}
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+      - sonarqube-logs:/opt/sonarqube/logs
     environment:
-      SONARQUBE_DATABASE_HOST: postgres
-      SONARQUBE_DATABASE_PORT_NUMBER: 5432
-      SONARQUBE_DATABASE_NAME: ${SONARQUBE_DB_NAME}
-      SONARQUBE_DATABASE_USER: ${SONARQUBE_DB_USER}
-      SONARQUBE_DATABASE_PASSWORD: ${SONARQUBE_DB_PASSWORD}
-      SONARQUBE_USERNAME: ${SONARQUBE_ADMIN_USERNAME}
-      SONARQUBE_PASSWORD: ${SONARQUBE_ADMIN_PASSWORD}
-      SONARQUBE_EMAIL: ${SONARQUBE_ADMIN_EMAIL}
-      SONARQUBE_SMTP_HOST: ${SONARQUBE_SMTP_ADDRESS}
-      SONARQUBE_SMTP_PORT_NUMBER: ${SONARQUBE_SMTP_PORT}
-      SONARQUBE_SMTP_USER: ${SONARQUBE_SMTP_USER_NAME}
-      SONARQUBE_SMTP_PASSWORD: ${SONARQUBE_SMTP_PASSWORD}
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/${SONARQUBE_DB_NAME}
+      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER}
+      SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+      SONAR_WEB_CONTEXT: /
+      SONAR_EMAIL_SMTP_HOST: ${SONARQUBE_SMTP_ADDRESS}
+      SONAR_EMAIL_SMTP_PORT: ${SONARQUBE_SMTP_PORT}
+      SONAR_EMAIL_SMTP_USERNAME: ${SONARQUBE_SMTP_USER_NAME}
+      SONAR_EMAIL_SMTP_PASSWORD: ${SONARQUBE_SMTP_PASSWORD}
+      SONAR_EMAIL_SMTP_SECURE_CONNECTION: starttls
+      SONAR_SEARCH_JAVAADDITIONALOPTS: "-Dnode.store.allow_mmap=false"
     healthcheck:
-      test: timeout 10s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/system/status"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 90s
+      retries: 10
+      start_period: 120s
     networks:
       - sonarqube-network
       - traefik-network
     labels:
-      # Enable Traefik for this container
       - "traefik.enable=true"
-      # Match incoming requests on a specific hostname
       - "traefik.http.routers.sonarqube.rule=Host(`${SONARQUBE_HOSTNAME}`)"
-      # Assign the router to a named Traefik service
       - "traefik.http.routers.sonarqube.service=sonarqube"
-      # Use the 'websecure' (HTTPS) entry point
       - "traefik.http.routers.sonarqube.entrypoints=websecure"
-      # Define the internal container port for routing
       - "traefik.http.services.sonarqube.loadbalancer.server.port=9000"
-      # Enable TLS on this router
       - "traefik.http.routers.sonarqube.tls=true"
-      # Use Let's Encrypt for certificate management
       - "traefik.http.routers.sonarqube.tls.certresolver=letsencrypt"
-      # Pass the original Host header to the container
       - "traefik.http.services.sonarqube.loadbalancer.passhostheader=true"
-      # Apply a compression middleware
       - "traefik.http.routers.sonarqube.middlewares=compresstraefik"
-      # Define settings for the compression middleware
       - "traefik.http.middlewares.compresstraefik.compress=true"
-      # Specify which Docker network Traefik should use for routing
       - "traefik.docker.network=traefik-network"
     restart: unless-stopped
     depends_on:
@@ -90,42 +81,24 @@ services:
   traefik:
     image: ${TRAEFIK_IMAGE_TAG}
     command:
-      # Set the log level (DEBUG, INFO, WARN, ERROR)
       - "--log.level=${TRAEFIK_LOG_LEVEL}"
-      # Enable the built-in API and web-based dashboard
       - "--api.dashboard=true"
-      # Enable the /ping endpoint so we can health-check Traefik
       - "--ping=true"
-      # Assign the /ping endpoint to a dedicated entry point on port 8082
       - "--ping.entrypoint=ping"
       - "--entrypoints.ping.address=:8082"
-      # Define the primary HTTP entry point on port 80
       - "--entrypoints.web.address=:80"
-      # Define the secure (HTTPS) entry point on port 443
       - "--entrypoints.websecure.address=:443"
-      # HTTP -> HTTPS redirect at entrypoint level
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      # Enable the Docker provider to detect containers and their labels
       - "--providers.docker=true"
-      # Point Traefik to the Docker socket
       - "--providers.docker.endpoint=unix:///var/run/docker.sock"
-      # Prevent automatic exposure of all containers; only expose containers
-      # with "traefik.enable=true"
       - "--providers.docker.exposedbydefault=false"
-      # Use ACME (Let's Encrypt) to generate/renew certificates via TLS challenge
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      # The email address used by Let's Encrypt for renewal notices
       - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
-      # The file where ACME certificates are stored inside the container
       - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
-      # Enable Prometheus metrics
       - "--metrics.prometheus=true"
-      # Configure Prometheus histogram buckets
       - "--metrics.prometheus.buckets=0.1,0.3,1.2,5.0"
-      # Check for newer Traefik versions and optionally log that info
       - "--global.checknewversion=true"
-      # Disable sending anonymous usage data to the Traefik maintainers
       - "--global.sendanonymoususage=false"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -136,26 +109,21 @@ services:
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD", "wget", "http://localhost:8082/ping","--spider"]
+      test: ["CMD", "wget", "http://localhost:8082/ping", "--spider"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 5s
     labels:
-      # Enable Traefik for this container
       - "traefik.enable=true"
-      # A router to expose the Traefik dashboard
       - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME}`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.service=api@internal"
-      # Basic Authentication for the Traefik dashboard
       - "traefik.http.routers.dashboard.middlewares=authtraefik"
       - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH}"
-      # Specify the internal server port to the dashboard service
       - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
-      # Pass the original Host header to the backend
       - "traefik.http.services.dashboard.loadbalancer.passhostheader=true"
     restart: unless-stopped
 
@@ -171,7 +139,7 @@ services:
         sleep $BACKUP_INTERVAL; done'
     volumes:
       - sonarqube-postgres-backup:/var/lib/postgresql/data
-      - sonarqube-data:${DATA_PATH}
+      - sonarqube-data:/opt/sonarqube/data
       - sonarqube-data-backups:${DATA_BACKUPS_PATH}
       - sonarqube-database-backups:${POSTGRES_BACKUPS_PATH}
     environment:
