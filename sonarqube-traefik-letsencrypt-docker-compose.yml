@@ -51,7 +51,7 @@ services:
       SONAR_EMAIL_SMTP_SECURE_CONNECTION: starttls
       SONAR_SEARCH_JAVAADDITIONALOPTS: "-Dnode.store.allow_mmap=false"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/system/status"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"]
       interval: 10s
       timeout: 5s
       retries: 10
