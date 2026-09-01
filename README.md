@@ -1,164 +1,85 @@
-# SonarQube with Let's Encrypt Using Docker Compose
+# SonarQube + Traefik + Let's Encrypt — Docker Compose
 
-[![Deployment Verification](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/00-deployment-verification.yml/badge.svg)](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions)
+[![Deployment Verification](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg?branch=main)](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The badge displayed on my repository indicates the status of the deployment verification workflow as executed on the latest commit to the main branch.
+This repository deploys **SonarQube Community Build** — static code analysis for 30+ languages — behind **Traefik** with automatic **Let's Encrypt TLS**, backed by **PostgreSQL 17**, with scheduled **backups** (database + data volume) and companion **restore scripts**.
 
-**Passing**: This means the most recent commit has successfully passed all deployment checks, confirming that the Docker Compose setup functions correctly as designed.
+📙 Full narrative installation guide on the blog: [heyvaldemar.com/install-sonarqube-using-docker-compose/](https://www.heyvaldemar.com/install-sonarqube-using-docker-compose/).
 
-📙 The complete installation guide is available on my [website](https://www.heyvaldemar.com/install-sonarqube-using-docker-compose/).
+## Getting started
 
-❗ Change variables in the `.env` to meet your requirements.
+```bash
+# 1. Clone
+git clone https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose
+cd sonarqube-traefik-letsencrypt-docker-compose
 
-💡 Note that the `.env` file should be in the same directory as `sonarqube-traefik-letsencrypt-docker-compose.yml`.
+# 2. Create the two Docker networks the stack expects
+docker network create traefik-network
+docker network create sonarqube-network
 
-Create networks for your services before deploying the configuration using the commands:
+# 3. Copy the environment template and fill in required values
+cp .env.example .env
+$EDITOR .env
+# ^ Required: SONARQUBE_DB_PASSWORD, SONARQUBE_HOSTNAME,
+#   TRAEFIK_HOSTNAME, TRAEFIK_ACME_EMAIL, TRAEFIK_BASIC_AUTH.
 
-`docker network create traefik-network`
+# 4. Deploy
+docker compose -f sonarqube-traefik-letsencrypt-docker-compose.yml -p sonarqube up -d
+```
 
-`docker network create sonarqube-network`
+First start takes a few minutes: SonarQube runs its database migration and boots the embedded Elasticsearch before `/api/system/status` reports `UP`. Log in with `admin`/`admin` — SonarQube forces a password change immediately.
 
-Adjust the `vm.max_map_count` using the commands:
+### What success looks like
 
-`sudo sysctl -w vm.max_map_count=262144`
+```bash
+docker compose -f sonarqube-traefik-letsencrypt-docker-compose.yml -p sonarqube ps
+curl -fsk "https://${SONARQUBE_HOSTNAME}/api/system/status"   # {"status":"UP",...}
+```
 
-Deploy SonarQube using Docker Compose:
+### Common first-deploy issues
 
-`docker compose -f sonarqube-traefik-letsencrypt-docker-compose.yml -p sonarqube up -d`
+- **Cert issuance fails.** DNS hasn't propagated or port 80 isn't reachable from the internet.
+- **404 through the proxy while logs look fine.** The SonarQube container is still starting or unhealthy — Traefik only routes to healthy containers. `docker ps` shows the health state.
+- **Elasticsearch bootstrap errors.** This template sets `-Dnode.store.allow_mmap=false`, so the usual `vm.max_map_count` requirement does not apply.
+- **Networks not found.** Step 2 was skipped.
 
-## Backups
+## Supply chain trust
 
-The `backups` container in the configuration is responsible for the following:
+Three images — [`traefik`](https://hub.docker.com/_/traefik), [`sonarqube`](https://hub.docker.com/_/sonarqube), [`postgres`](https://hub.docker.com/_/postgres) — pinned to `tag@sha256:<digest>` as interpolation defaults in the compose `x-images` block. `git pull` alone delivers the tested combination; an `*_IMAGE_TAG` variable in `.env` overrides deliberately.
 
-1. **Database Backup**: Creates compressed backups of the PostgreSQL database using pg_dump.
-Customizable backup path, filename pattern, and schedule through variables like `POSTGRES_BACKUPS_PATH`, `POSTGRES_BACKUP_NAME`, and `BACKUP_INTERVAL`.
+The weekly `check-pin-freshness` CI job re-resolves each pin against its registry and compares the pinned SonarQube and Traefik versions against the latest upstream releases. GitHub Actions are pinned by commit SHA; Dependabot keeps those fresh.
 
-2. **Application Data Backup**: Compresses and stores backups of the application data on the same schedule. Controlled via variables such as `DATA_BACKUPS_PATH`, `DATA_BACKUP_NAME`, and `BACKUP_INTERVAL`.
+## Production checklist
 
-3. **Backup Pruning**: Periodically removes backups exceeding a specified age to manage storage. Customizable pruning schedule and age threshold with `POSTGRES_BACKUP_PRUNE_DAYS` and `DATA_BACKUP_PRUNE_DAYS`.
+- [ ] **Change the admin password immediately** — the first login forces it; don't postpone the first login.
+- [ ] **Strong database password** — 24+ random characters.
+- [ ] **Regenerate the Traefik dashboard hash** — never ship the placeholder.
+- [ ] **Host-mount the backup volumes** for disaster recovery.
+- [ ] **Size the host for analysis load** — SonarQube wants 4 GB+ RAM; the embedded Elasticsearch is the hungry part.
 
-By utilizing this container, consistent and automated backups of the essential components of your instance are ensured. Moreover, efficient management of backup storage and tailored backup routines can be achieved through easy and flexible configuration using environment variables.
+## Backups and restore
 
-## sonarqube-restore-database.sh Description
+The `backups` container runs a `pg_dump | gzip` + `tar.gz`-of-data → prune → sleep loop (defaults: 30-minute warm-up, 24-hour interval, 7-day retention). Restore with the interactive scripts (`chmod +x *.sh` once): `./sonarqube-restore-database.sh`, then `./sonarqube-restore-application-data.sh`.
 
-This script facilitates the restoration of a database backup:
+## Testing
 
-1. **Identify Containers**: It first identifies the service and backups containers by name, finding the appropriate container IDs.
+The [Deployment Verification](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml?query=branch%3Amain) workflow runs on every push, pull request, and every Monday at 06:00 UTC: shellcheck + actionlint, Trivy scans of all three pinned images, the weekly freshness check, and a deploy-and-test job that boots the stack with ephemeral credentials and requires `/api/system/status` to report `UP` through Traefik.
 
-2. **List Backups**: Displays all available database backups located at the specified backup path.
+## Security Notes
 
-3. **Select Backup**: Prompts the user to copy and paste the desired backup name from the list to restore the database.
+- Credentials are read from `.env` at deploy time; `.env` is gitignored and compose fails fast on missing required variables.
+- **Pre-rotation advisory.** Releases before v1.0.0 (2026-09-01) shipped a tracked `.env` with a generated-looking database password and SMTP relay credentials. Rotate both if your deployment reused them.
+- SMTP is off by default; PostgreSQL listens only on the internal network.
 
-4. **Stop Service**: Temporarily stops the service to ensure data consistency during restoration.
+---
 
-5. **Restore Database**: Executes a sequence of commands to drop the current database, create a new one, and restore it from the selected compressed backup file.
-
-6. **Start Service**: Restarts the service after the restoration is completed.
-
-To make the `sonarqube-restore-database.shh` script executable, run the following command:
-
-`chmod +x sonarqube-restore-database.sh`
-
-Usage of this script ensures a controlled and guided process to restore the database from an existing backup.
-
-## sonarqube-restore-application-data.sh Description
-
-This script is designed to restore the application data:
-
-1. **Identify Containers**: Similarly to the database restore script, it identifies the service and backups containers by name.
-
-2. **List Application Data Backups**: Displays all available application data backups at the specified backup path.
-
-3. **Select Backup**: Asks the user to copy and paste the desired backup name for application data restoration.
-
-4. **Stop Service**: Stops the service to prevent any conflicts during the restore process.
-
-5. **Restore Application Data**: Removes the current application data and then extracts the selected backup to the appropriate application data path.
-
-6. **Start Service**: Restarts the service after the application data has been successfully restored.
-
-To make the `sonarqube-restore-application-data.sh` script executable, run the following command:
-
-`chmod +x sonarqube-restore-application-data.sh`
-
-By utilizing this script, you can efficiently restore application data from an existing backup while ensuring proper coordination with the running service.
-
-## Author
-
-hey everyone,
-
-💾 I’ve been in the IT game for over 20 years, cutting my teeth with some big names like [IBM](https://www.linkedin.com/in/heyvaldemar/), [Thales](https://www.linkedin.com/in/heyvaldemar/), and [Amazon](https://www.linkedin.com/in/heyvaldemar/). These days, I wear the hat of a DevOps Consultant and Team Lead, but what really gets me going is Docker and container technology - I’m kind of obsessed!
-
-💛 I have my own IT [blog](https://www.heyvaldemar.com/), where I’ve built a [community](https://discord.gg/AJQGCCBcqf) of DevOps enthusiasts who share my love for all things Docker, containers, and IT technologies in general. And to make sure everyone can jump on this awesome DevOps train, I write super detailed guides (seriously, they’re foolproof!) that help even newbies deploy and manage complex IT solutions.
-
-🚀 My dream is to empower every single person in the DevOps community to squeeze every last drop of potential out of Docker and container tech.
-
-🐳 As a [Docker Captain](https://www.docker.com/captains/vladimir-mikhalev/), I’m stoked to share my knowledge, experiences, and a good dose of passion for the tech. My aim is to encourage learning, innovation, and growth, and to inspire the next generation of IT whizz-kids to push Docker and container tech to its limits.
-
-Let’s do this together!
-
-## My 2D Portfolio
-
-🕹️ Click into [sre.gg](https://www.sre.gg/) — my virtual space is a 2D pixel-art portfolio inviting you to interact with elements that encapsulate the milestones of my DevOps career.
-
-## My Courses
-
-🎓 Dive into my [comprehensive IT courses](https://www.heyvaldemar.com/courses/) designed for enthusiasts and professionals alike. Whether you're looking to master Docker, conquer Kubernetes, or advance your DevOps skills, my courses provide a structured pathway to enhancing your technical prowess.
-
-🔑 [Each course](https://www.udemy.com/user/heyvaldemar/) is built from the ground up with real-world scenarios in mind, ensuring that you gain practical knowledge and hands-on experience. From beginners to seasoned professionals, there's something here for everyone to elevate their IT skills.
-
-## My Services
-
-💼 Take a look at my [service catalog](https://www.heyvaldemar.com/services/) and find out how we can make your technological life better. Whether it's increasing the efficiency of your IT infrastructure, advancing your career, or expanding your technological horizons — I'm here to help you achieve your goals. From DevOps transformations to building gaming computers — let's make your technology unparalleled!
-
-## Patreon Exclusives
-
-🏆 Join my [Patreon](https://www.patreon.com/heyvaldemar) and dive deep into the world of Docker and DevOps with exclusive content tailored for IT enthusiasts and professionals. As your experienced guide, I offer a range of membership tiers designed to suit everyone from newbies to IT experts.
-
-## My Recommendations
-
-📕 Check out my collection of [essential DevOps books](https://kit.co/heyvaldemar/essential-devops-books)\
-🖥️ Check out my [studio streaming and recording kit](https://kit.co/heyvaldemar/my-studio-streaming-and-recording-kit)\
-📡 Check out my [streaming starter kit](https://kit.co/heyvaldemar/streaming-starter-kit)
-
-## Follow Me
-
-🎬 [YouTube](https://www.youtube.com/channel/UCf85kQ0u1sYTTTyKVpxrlyQ?sub_confirmation=1)\
-🐦 [X / Twitter](https://twitter.com/heyvaldemar)\
-🎨 [Instagram](https://www.instagram.com/heyvaldemar/)\
-🐘 [Mastodon](https://mastodon.social/@heyvaldemar)\
-🧵 [Threads](https://www.threads.net/@heyvaldemar)\
-🎸 [Facebook](https://www.facebook.com/heyvaldemarFB/)\
-🧊 [Bluesky](https://bsky.app/profile/heyvaldemar.bsky.social)\
-🎥 [TikTok](https://www.tiktok.com/@heyvaldemar)\
-💻 [LinkedIn](https://www.linkedin.com/in/heyvaldemar/)\
-📣 [daily.dev Squad](https://app.daily.dev/squads/devopscompass)\
-🧩 [LeetCode](https://leetcode.com/u/heyvaldemar/)\
-🐈 [GitHub](https://github.com/heyvaldemar)
-
-## Community of IT Experts
-
-👾 [Discord](https://discord.gg/AJQGCCBcqf)
-
-## Refill My Coffee Supplies
-
-💖 [PayPal](https://www.paypal.com/paypalme/heyvaldemarCOM)\
-🏆 [Patreon](https://www.patreon.com/heyvaldemar)\
-💎 [GitHub](https://github.com/sponsors/heyvaldemar)\
-🥤 [BuyMeaCoffee](https://www.buymeacoffee.com/heyvaldemar)\
-🍪 [Ko-fi](https://ko-fi.com/heyvaldemar)
-
-🌟 **Bitcoin (BTC):** bc1q2fq0k2lvdythdrj4ep20metjwnjuf7wccpckxc\
-🔹 **Ethereum (ETH):** 0x76C936F9366Fad39769CA5285b0Af1d975adacB8\
-🪙 **Binance Coin (BNB):** bnb1xnn6gg63lr2dgufngfr0lkq39kz8qltjt2v2g6\
-💠 **Litecoin (LTC):** LMGrhx8Jsx73h1pWY9FE8GB46nBytjvz8g
+## About the maintainer
 
 <div align="center">
 
-### Show some 💜 by starring some of the [repositories](https://github.com/heyValdemar?tab=repositories)!
+**Maintained by [Vladimir Mikhalev](https://github.com/heyvaldemar)** — Docker Captain · IBM Champion · AWS Community Builder
 
-![octocat](https://user-images.githubusercontent.com/10498744/210113490-e2fad07f-4488-4da8-a656-b9abbdd8cb26.gif)
+[YouTube](https://www.youtube.com/channel/UCf85kQ0u1sYTTTyKVpxrlyQ?sub_confirmation=1) · [Blog](https://heyvaldemar.com) · [LinkedIn](https://www.linkedin.com/in/heyvaldemar/)
 
 </div>
-
-![footer](https://user-images.githubusercontent.com/10498744/210157572-1fca0242-8af2-46a6-bfa3-666ffd40ebde.svg)

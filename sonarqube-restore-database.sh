@@ -16,7 +16,6 @@ SONARQUBE_CONTAINER=$(docker ps -aqf "name=sonarqube-sonarqube")
 SONARQUBE_BACKUPS_CONTAINER=$(docker ps -aqf "name=sonarqube-backups")
 SONARQUBE_DB_NAME="sonarqubedb"
 SONARQUBE_DB_USER="sonarqubedbuser"
-POSTGRES_PASSWORD=$(docker exec $SONARQUBE_BACKUPS_CONTAINER printenv PGPASSWORD)
 BACKUP_PATH="/srv/sonarqube-postgres/backups/"
 
 echo "--> All available database backups:"
@@ -30,7 +29,7 @@ echo "--> Copy and paste the backup name from the list above to restore database
 --> Example: sonarqube-postgres-backup-YYYY-MM-DD_hh-mm.gz"
 echo -n "--> "
 
-read SELECTED_DATABASE_BACKUP
+read -r SELECTED_DATABASE_BACKUP
 
 echo "--> $SELECTED_DATABASE_BACKUP was selected"
 

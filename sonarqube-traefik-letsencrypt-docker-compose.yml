@@ -1,3 +1,15 @@
+# Image pins live HERE, as interpolation defaults, so `git pull` (or
+# re-downloading this file) delivers the exact version combination this
+# repository has tested — no .env editing required. Setting the matching
+# variable in .env overrides the default for anyone who wants to pin
+# differently; .env itself carries only secrets and deliberate overrides.
+# CI (Trivy scans, check-pin-freshness, the ephemeral test .env) reads
+# the pins from these lines — this block is the single source of truth.
+x-images:
+  traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:3.7@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf}
+  postgres: &postgres-image ${SONARQUBE_POSTGRES_IMAGE_TAG:-postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}
+  sonarqube: &sonarqube-image ${SONARQUBE_IMAGE_TAG:-sonarqube:26.8.0.126808-community@sha256:9026624a61cd25542a402a9e7213dd7dbb39724ac9597e331e6b85362558c079}
+
 networks:
   sonarqube-network:
     external: true
@@ -16,17 +28,17 @@ volumes:
 
 services:
   postgres:
-    image: ${SONARQUBE_POSTGRES_IMAGE_TAG}
+    image: *postgres-image
     volumes:
       - sonarqube-postgres:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: ${SONARQUBE_DB_NAME}
-      POSTGRES_USER: ${SONARQUBE_DB_USER}
-      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD}
+      POSTGRES_DB: ${SONARQUBE_DB_NAME:-sonarqubedb}
+      POSTGRES_USER: ${SONARQUBE_DB_USER:-sonarqubedbuser}
+      POSTGRES_PASSWORD: ${SONARQUBE_DB_PASSWORD:?set in .env - see .env.example for generation command}
     networks:
       - sonarqube-network
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "${SONARQUBE_DB_NAME}", "-U", "${SONARQUBE_DB_USER}"]
+      test: ["CMD", "pg_isready", "-q", "-d", "${SONARQUBE_DB_NAME:-sonarqubedb}", "-U", "${SONARQUBE_DB_USER:-sonarqubedbuser}"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -34,24 +46,29 @@ services:
     restart: unless-stopped
 
   sonarqube:
-    image: ${SONARQUBE_IMAGE_TAG}
+    image: *sonarqube-image
     volumes:
       - sonarqube-data:/opt/sonarqube/data
       - sonarqube-extensions:/opt/sonarqube/extensions
       - sonarqube-logs:/opt/sonarqube/logs
     environment:
-      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/${SONARQUBE_DB_NAME}
-      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER}
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/${SONARQUBE_DB_NAME:-sonarqubedb}
+      SONAR_JDBC_USERNAME: ${SONARQUBE_DB_USER:-sonarqubedbuser}
       SONAR_JDBC_PASSWORD: ${SONARQUBE_DB_PASSWORD}
       SONAR_WEB_CONTEXT: /
-      SONAR_EMAIL_SMTP_HOST: ${SONARQUBE_SMTP_ADDRESS}
-      SONAR_EMAIL_SMTP_PORT: ${SONARQUBE_SMTP_PORT}
-      SONAR_EMAIL_SMTP_USERNAME: ${SONARQUBE_SMTP_USER_NAME}
-      SONAR_EMAIL_SMTP_PASSWORD: ${SONARQUBE_SMTP_PASSWORD}
+      # SMTP is optional and off by default — set the SONARQUBE_SMTP_*
+      # variables in .env to enable outgoing mail.
+      SONAR_EMAIL_SMTP_HOST: ${SONARQUBE_SMTP_ADDRESS:-}
+      SONAR_EMAIL_SMTP_PORT: ${SONARQUBE_SMTP_PORT:-587}
+      SONAR_EMAIL_SMTP_USERNAME: ${SONARQUBE_SMTP_USER_NAME:-}
+      SONAR_EMAIL_SMTP_PASSWORD: ${SONARQUBE_SMTP_PASSWORD:-}
       SONAR_EMAIL_SMTP_SECURE_CONNECTION: starttls
       SONAR_SEARCH_JAVAADDITIONALOPTS: "-Dnode.store.allow_mmap=false"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"]
+      # curl, not wget: the sonarqube image ships curl only, and a
+      # permanently failing healthcheck removes the container from Traefik
+      # load balancing (404s for every request).
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -63,7 +80,7 @@ services:
       # Enable Traefik for this container
       - "traefik.enable=true"
       # Match incoming requests on a specific hostname
-      - "traefik.http.routers.sonarqube.rule=Host(`${SONARQUBE_HOSTNAME}`)"
+      - "traefik.http.routers.sonarqube.rule=Host(`${SONARQUBE_HOSTNAME:?set in .env - see .env.example}`)"
       # Assign the router to a named Traefik service
       - "traefik.http.routers.sonarqube.service=sonarqube"
       # Use the 'websecure' (HTTPS) entry point
@@ -90,12 +107,10 @@ services:
         condition: service_healthy
 
   traefik:
-    image: ${TRAEFIK_IMAGE_TAG}
-    environment:
-      - DOCKER_API_VERSION=1.47
+    image: *traefik-image
     command:
       # Set the log level (DEBUG, INFO, WARN, ERROR)
-      - "--log.level=${TRAEFIK_LOG_LEVEL}"
+      - "--log.level=${TRAEFIK_LOG_LEVEL:-WARN}"
       # Enable the built-in API and web-based dashboard
       - "--api.dashboard=true"
       # Enable the /ping endpoint so we can health-check Traefik
@@ -120,7 +135,7 @@ services:
       # Use ACME (Let's Encrypt) to generate/renew certificates via TLS challenge
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       # The email address used by Let's Encrypt for renewal notices
-      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL:?set in .env - see .env.example}"
       # The file where ACME certificates are stored inside the container
       - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
       # Enable Prometheus metrics
@@ -149,14 +164,14 @@ services:
       # Enable Traefik for this container
       - "traefik.enable=true"
       # A router to expose the Traefik dashboard
-      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME}`)"
+      - "traefik.http.routers.dashboard.rule=Host(`${TRAEFIK_HOSTNAME:?set in .env - see .env.example}`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
       - "traefik.http.routers.dashboard.service=api@internal"
       # Basic Authentication for the Traefik dashboard
       - "traefik.http.routers.dashboard.middlewares=authtraefik"
-      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH}"
+      - "traefik.http.middlewares.authtraefik.basicauth.users=${TRAEFIK_BASIC_AUTH:?set in .env - see .env.example for htpasswd generation}"
       # Specify the internal server port to the dashboard service
       - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
       # Pass the original Host header to the backend
@@ -164,33 +179,33 @@ services:
     restart: unless-stopped
 
   backups:
-    image: ${SONARQUBE_POSTGRES_IMAGE_TAG}
+    image: *postgres-image
     command: >-
-      sh -c 'sleep $BACKUP_INIT_SLEEP &&
+      sh -c 'sleep $$BACKUP_INIT_SLEEP &&
       while true; do
-        pg_dump -h postgres -p 5432 -d $SONARQUBE_DB_NAME -U $SONARQUBE_DB_USER | gzip > $POSTGRES_BACKUPS_PATH/$POSTGRES_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").gz &&
-        tar -zcpf $DATA_BACKUPS_PATH/$DATA_BACKUP_NAME-$(date "+%Y-%m-%d_%H-%M").tar.gz $DATA_PATH &&
-        find $POSTGRES_BACKUPS_PATH -type f -mtime +$POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
-        find $DATA_BACKUPS_PATH -type f -mtime +$DATA_BACKUP_PRUNE_DAYS | xargs rm -f;
-        sleep $BACKUP_INTERVAL; done'
+        pg_dump -h postgres -p 5432 -d $$SONARQUBE_DB_NAME -U $$SONARQUBE_DB_USER | gzip > $$POSTGRES_BACKUPS_PATH/$$POSTGRES_BACKUP_NAME-$$(date "+%Y-%m-%d_%H-%M").gz &&
+        tar -zcpf $$DATA_BACKUPS_PATH/$$DATA_BACKUP_NAME-$$(date "+%Y-%m-%d_%H-%M").tar.gz $$DATA_PATH &&
+        find $$POSTGRES_BACKUPS_PATH -type f -mtime +$$POSTGRES_BACKUP_PRUNE_DAYS | xargs rm -f &&
+        find $$DATA_BACKUPS_PATH -type f -mtime +$$DATA_BACKUP_PRUNE_DAYS | xargs rm -f;
+        sleep $$BACKUP_INTERVAL; done'
     volumes:
       - sonarqube-postgres-backup:/var/lib/postgresql/data
       - sonarqube-data:/opt/sonarqube/data
-      - sonarqube-data-backups:${DATA_BACKUPS_PATH}
-      - sonarqube-database-backups:${POSTGRES_BACKUPS_PATH}
+      - sonarqube-data-backups:${DATA_BACKUPS_PATH:-/srv/sonarqube-application-data/backups}
+      - sonarqube-database-backups:${POSTGRES_BACKUPS_PATH:-/srv/sonarqube-postgres/backups}
     environment:
-      SONARQUBE_DB_NAME: ${SONARQUBE_DB_NAME}
-      SONARQUBE_DB_USER: ${SONARQUBE_DB_USER}
+      SONARQUBE_DB_NAME: ${SONARQUBE_DB_NAME:-sonarqubedb}
+      SONARQUBE_DB_USER: ${SONARQUBE_DB_USER:-sonarqubedbuser}
       PGPASSWORD: ${SONARQUBE_DB_PASSWORD}
-      BACKUP_INIT_SLEEP: ${BACKUP_INIT_SLEEP}
-      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
-      POSTGRES_BACKUP_PRUNE_DAYS: ${POSTGRES_BACKUP_PRUNE_DAYS}
-      DATA_BACKUP_PRUNE_DAYS: ${DATA_BACKUP_PRUNE_DAYS}
-      POSTGRES_BACKUPS_PATH: ${POSTGRES_BACKUPS_PATH}
-      DATA_BACKUPS_PATH: ${DATA_BACKUPS_PATH}
-      DATA_PATH: ${DATA_PATH}
-      POSTGRES_BACKUP_NAME: ${POSTGRES_BACKUP_NAME}
-      DATA_BACKUP_NAME: ${DATA_BACKUP_NAME}
+      BACKUP_INIT_SLEEP: ${BACKUP_INIT_SLEEP:-30m}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL:-24h}
+      POSTGRES_BACKUP_PRUNE_DAYS: ${POSTGRES_BACKUP_PRUNE_DAYS:-7}
+      DATA_BACKUP_PRUNE_DAYS: ${DATA_BACKUP_PRUNE_DAYS:-7}
+      POSTGRES_BACKUPS_PATH: ${POSTGRES_BACKUPS_PATH:-/srv/sonarqube-postgres/backups}
+      DATA_BACKUPS_PATH: ${DATA_BACKUPS_PATH:-/srv/sonarqube-application-data/backups}
+      DATA_PATH: ${DATA_PATH:-/opt/sonarqube/data}
+      POSTGRES_BACKUP_NAME: ${POSTGRES_BACKUP_NAME:-sonarqube-postgres-backup}
+      DATA_BACKUP_NAME: ${DATA_BACKUP_NAME:-sonarqube-application-data-backup}
     networks:
       - sonarqube-network
     restart: unless-stopped
