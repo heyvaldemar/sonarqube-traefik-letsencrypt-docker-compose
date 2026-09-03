@@ -90,7 +90,7 @@ _(no unreleased changes yet)_
   required-variable guard fires, a backup is produced, it is a readable
   archive with real dump content (and a readable data `tar.gz` where the
   stack has one), a database outage is reported as `FAILED`, **restore
-  genuinely replaces database state** (a marker row inserted after the
+ replaces database state** (a marker row inserted after the
   baseline backup is gone after restoring it), and pruning removes only
   old files.
 
@@ -121,7 +121,7 @@ v1.2.0.
 
 ### Changed
 
-- **SonarQube 26.2 → 26.8.0 community build**, **Traefik 3.2 → 3.7**:
+- **SonarQube 26.2 → 26.8.0 community build**, Traefik 3.2 → 3.7:
   3.7 talks to Docker Engine 29 natively, so the `DOCKER_API_VERSION=1.47`
   workaround is gone. PostgreSQL stays on 17-alpine, now digest-pinned.
 - **All images pinned by `tag@sha256:digest`** in the compose `x-images`

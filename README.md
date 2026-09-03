@@ -3,7 +3,7 @@
 [![Deployment Verification](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg?branch=main)](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This repository deploys **SonarQube Community Build** (static code analysis for 30+ languages) behind **Traefik** with automatic **Let's Encrypt TLS**, backed by **PostgreSQL 17**, with scheduled **backups** (database + data volume) and companion **restore scripts**.
+This repository deploys SonarQube Community Build (static code analysis for 30+ languages) behind Traefik with automatic Let's Encrypt TLS, backed by PostgreSQL 17, with scheduled backups (database + data volume) and companion restore scripts.
 
 📙 Full narrative installation guide on the blog: [heyvaldemar.com/install-sonarqube-using-docker-compose/](https://www.heyvaldemar.com/install-sonarqube-using-docker-compose/).
 
@@ -87,7 +87,7 @@ chmod +x tests/e2e-backup-restore.sh
 
 It stops the database container briefly to prove failure detection: run it on a staging copy, not on production.
 
-## Security Notes
+## Security notes
 
 - Credentials are read from `.env` at deploy time; `.env` is gitignored and compose fails fast on missing required variables.
 - **Pre-rotation advisory.** Releases before v1.0.0 (2026-09-01) shipped a tracked `.env` with a generated-looking database password and SMTP relay credentials. Rotate both if your deployment reused them.
