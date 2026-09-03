@@ -65,7 +65,7 @@ _(no unreleased changes yet)_
 
 ### Added
 
-- **`tests/e2e-backup-restore.sh`** — seven end-to-end scenarios against
+- **`tests/e2e-backup-restore.sh`**: seven end-to-end scenarios against
   the live stack, run by CI on every push and by you locally: the
   required-variable guard fires, a backup is produced, it is a readable
   archive with real dump content (and a readable data `tar.gz` where the
@@ -101,12 +101,12 @@ v1.2.0.
 
 ### Changed
 
-- **SonarQube 26.2 → 26.8.0 community build**, **Traefik 3.2 → 3.7** —
+- **SonarQube 26.2 → 26.8.0 community build**, **Traefik 3.2 → 3.7**:
   3.7 talks to Docker Engine 29 natively, so the `DOCKER_API_VERSION=1.47`
   workaround is gone. PostgreSQL stays on 17-alpine, now digest-pinned.
 - **All images pinned by `tag@sha256:digest`** in the compose `x-images`
   block; `.env` now carries only secrets and deliberate overrides.
-- **SMTP is off by default** — set the `SONARQUBE_SMTP_*` variables to
+- **SMTP is off by default**: set the `SONARQUBE_SMTP_*` variables to
   enable outgoing mail.
 
 ### Fixed
@@ -122,7 +122,7 @@ v1.2.0.
 ### Security
 
 - **Credentials untracked from git.** The tracked `.env` carried a
-  generated-looking database password and SMTP relay credentials —
+  generated-looking database password and SMTP relay credentials:
   rotate both if reused.
 
 ### Added
