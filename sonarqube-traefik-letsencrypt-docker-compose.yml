@@ -8,7 +8,7 @@
 x-images:
   traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf}}
   postgres: &postgres-image ${SONARQUBE_POSTGRES_IMAGE_TAG:-postgres:${SONARQUBE_POSTGRES_IMAGE_VERSION:-17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73}}
-  sonarqube: &sonarqube-image ${SONARQUBE_IMAGE_TAG:-sonarqube:${SONARQUBE_IMAGE_VERSION:-26.8.0.126808-community@sha256:9026624a61cd25542a402a9e7213dd7dbb39724ac9597e331e6b85362558c079}}
+  sonarqube: &sonarqube-image ${SONARQUBE_IMAGE_TAG:-sonarqube:${SONARQUBE_IMAGE_VERSION:-26.9.0.129388-community@sha256:62930c7f510534bb2bf551ca69ad3ee6f8e12b4116d394597c64cefccbb3313b}}
 
 networks:
   sonarqube-network:

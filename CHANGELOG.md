@@ -25,6 +25,10 @@ _(no unreleased changes yet)_
   `docker compose up` fails with an invalid reference instead of
   deploying something unexpected.
 
+### Changed
+
+- `sonarqube` 26.8.0-community to 26.9.0-community.
+
 ## [1.4.0] - 2026-09-02
 
 ### Security
