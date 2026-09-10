@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Security
+
+- **`sonarqube:26.9.0.129388-community` was rebuilt upstream**; the pin moved from `sha256:62930c7f5105…` to `sha256:aa7146fd72ef…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
 
 ## [1.8.0] - 2026-09-07
 
