@@ -1,6 +1,7 @@
 # SonarQube + Traefik + Let's Encrypt on Docker Compose
 
 [![Deployment Verification](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml/badge.svg?branch=main)](https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/actions/workflows/deployment-verification.yml)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14880/badge)](https://www.bestpractices.dev/projects/14880)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This repository deploys SonarQube Community Build (static code analysis for 30+ languages) behind Traefik with automatic Let's Encrypt TLS, backed by PostgreSQL 17, with scheduled backups (database + data volume) and companion restore scripts.
