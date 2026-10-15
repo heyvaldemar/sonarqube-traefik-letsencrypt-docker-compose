@@ -49,6 +49,20 @@ curl -fsk "https://${SONARQUBE_HOSTNAME}/api/system/status"   # {"status":"UP",.
 
 `./update.sh` moves this checkout to the latest release tag — a combination this repository's CI has booted, upgraded from the previous release on the same volumes, and smoke-tested — and then runs `docker compose up -d`. It refuses to cross a major version unattended, refuses to run over local changes, and names any variable that became required since your version before anything has moved. `./update.sh --dry-run` says what would happen. Every release cut by fleet triage also carries what upstream changed, read from its release notes against this compose file.
 
+When a SonarQube release changes the database schema, the upgraded server does not migrate it by itself: it starts in maintenance and waits, which SonarSource keeps manual on purpose. While it waits, its healthcheck fails and Traefik stops routing to it, so the site answers 404 and `/setup` is out of reach through the domain. The `backups` service has a recent database dump in its volume; then start the migration from inside the container:
+
+```bash
+docker compose -f sonarqube-traefik-letsencrypt-docker-compose.yml -p sonarqube exec sonarqube curl -fsS -X POST http://localhost:9000/api/system/migrate_db
+```
+
+The status reports `UP` when the migration is done, and Traefik routes to SonarQube again:
+
+```bash
+docker compose -f sonarqube-traefik-letsencrypt-docker-compose.yml -p sonarqube exec sonarqube curl -fsS http://localhost:9000/api/system/status
+```
+
+CI's upgrade drill takes the same step, so a release that needs it is one that has been through it.
+
 ## Supply chain trust
 
 Three images ([`traefik`](https://hub.docker.com/_/traefik), [`sonarqube`](https://hub.docker.com/_/sonarqube), [`postgres`](https://hub.docker.com/_/postgres)) pinned to `tag@sha256:<digest>` as interpolation defaults in the compose `x-images` block. `git pull` alone delivers the tested combination; an `*_IMAGE_TAG` variable in `.env` overrides deliberately.

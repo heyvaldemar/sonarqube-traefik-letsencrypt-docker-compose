@@ -223,6 +223,33 @@ jobs:
       - name: Print Docker Compose services status
         run: docker ps
 
+      # SonarQube migrates its database by itself on a fresh start. After an
+      # upgrade that changes the schema it waits in maintenance instead
+      # (DB_MIGRATION_NEEDED) until an operator starts the migration:
+      # SonarSource keeps this manual on purpose. In maintenance the container
+      # is not healthy (its healthcheck waits for UP), so Traefik does not
+      # route to it and /setup is not reachable through the domain; the
+      # README's Updating section starts the migration from inside the
+      # container, and the drill does exactly that, so a release that needs
+      # the step still has to come up through it.
+      - name: Start the database migration an upgrade asks for
+        run: |
+          sq() { docker compose -f "$DOCKER_COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" exec -T sonarqube "$@"; }
+          for _ in $(seq 1 60); do
+            status="$(sq curl -fsS http://localhost:9000/api/system/status 2>/dev/null | jq -r '.status' 2>/dev/null || true)"
+            case "$status" in
+              DB_MIGRATION_NEEDED)
+                echo "SonarQube asks for its database migration; starting it as the README says"
+                sq curl -fsS -X POST http://localhost:9000/api/system/migrate_db; echo
+                exit 0 ;;
+              UP|DB_MIGRATION_RUNNING)
+                echo "status $status: no migration to start"
+                exit 0 ;;
+            esac
+            sleep 10
+          done
+          echo "SonarQube never reported a status; the wait below will say why"
+
       - name: Wait for SonarQube to report UP through Traefik
         # /api/system/status flips to UP only after Elasticsearch is up and
         # the database migration has finished — a real end-to-end signal

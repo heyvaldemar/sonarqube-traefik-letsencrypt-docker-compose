@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The upgrade drill starts SonarQube's database migration, the way the README now tells an operator to.** SonarQube 26.10 changes the schema of a 26.9 database and, after the upgrade, waits in maintenance until someone starts the migration with `POST /api/system/migrate_db`. In maintenance its healthcheck fails and Traefik stops routing to it, so the step has to run inside the container. CI waited for `UP` that could not come, and the 26.10 refresh was reverted on 2026-10-13 and 2026-10-14. The README's Updating section gives the commands; the drill runs them when the server asks and only then.
+
 - **CI fails on an anonymous volume.** A `VOLUME` an image declares and no mount covers becomes an anonymous volume: never backed up, and replaced by an empty one on `down`/`up`. The deployment verification now inspects every container it starts and fails on one, unless `.github/anonymous-volumes` lists it with the reason. GLPI's data lived in exactly such a volume from 2026-08-31 to 2026-10-11.
 
 ## [1.9.3] - 2026-10-09
