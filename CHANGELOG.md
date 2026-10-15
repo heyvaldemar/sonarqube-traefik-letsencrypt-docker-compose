@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CI fails on an anonymous volume.** A `VOLUME` an image declares and no mount covers becomes an anonymous volume: never backed up, and replaced by an empty one on `down`/`up`. The deployment verification now inspects every container it starts and fails on one, unless `.github/anonymous-volumes` lists it with the reason. GLPI's data lived in exactly such a volume from 2026-08-31 to 2026-10-11.
 
+### Fixed
+
+- **The clean-machine drill starts the same migration after it restores the previous release's database.** Restoring a 26.9 database onto 26.10 left SonarQube in maintenance, unhealthy, for the drill's full 15 minutes (found on 15 October by a run on the Ubuntu 26.04 runner image, though the image had nothing to do with it). `tests/sonarqube-migrate-if-asked.sh` now holds the step for both checks, and the README's restore section says an operator meets it too.
+
 ## [1.9.3] - 2026-10-09
 
 ### Security

@@ -48,7 +48,9 @@ jobs:
       DATA_PATH_ENV: "DATA_PATH"
       DB_FILE_MATCH: ""
       DATA_FILE_MATCH: ""
-      DB_RESTORE: "./sonarqube-restore-database.sh \"$F\""
+      # The previous release's database on this release: SonarQube waits for its
+      # migration before it is healthy (tests/sonarqube-migrate-if-asked.sh).
+      DB_RESTORE: "./sonarqube-restore-database.sh \"$F\" && ./tests/sonarqube-migrate-if-asked.sh"
       DATA_RESTORE: "./sonarqube-restore-application-data.sh \"$F\""
       DR_DIAG: ""
       DR_IGNORE_SERVICES: ""
@@ -153,7 +155,9 @@ jobs:
       DATA_PATH_ENV: "DATA_PATH"
       DB_FILE_MATCH: ""
       DATA_FILE_MATCH: ""
-      DB_RESTORE: "./sonarqube-restore-database.sh \"$F\""
+      # The previous release's database on this release: SonarQube waits for its
+      # migration before it is healthy (tests/sonarqube-migrate-if-asked.sh).
+      DB_RESTORE: "./sonarqube-restore-database.sh \"$F\" && ./tests/sonarqube-migrate-if-asked.sh"
       DATA_RESTORE: "./sonarqube-restore-application-data.sh \"$F\""
       DR_DIAG: ""
       DR_IGNORE_SERVICES: ""

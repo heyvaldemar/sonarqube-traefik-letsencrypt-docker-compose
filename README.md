@@ -98,7 +98,7 @@ Add `--source-tag <tag>` for a release published after 24 September 2026, which 
 
 ## Backups and restore
 
-The `backups` container runs a `pg_dump | gzip` + `tar.gz`-of-data → prune → sleep loop (defaults: 30-minute warm-up, 24-hour interval, 7-day retention). Restore with the interactive scripts (`chmod +x *.sh` once): `./sonarqube-restore-database.sh`, then `./sonarqube-restore-application-data.sh`. Each lists the backups and asks, or takes a file name as its argument; both read every path and credential from the running backups container, and CI runs both on every push.
+The `backups` container runs a `pg_dump | gzip` + `tar.gz`-of-data → prune → sleep loop (defaults: 30-minute warm-up, 24-hour interval, 7-day retention). Restore with the interactive scripts (`chmod +x *.sh` once): `./sonarqube-restore-database.sh`, then `./sonarqube-restore-application-data.sh`. Each lists the backups and asks, or takes a file name as its argument; both read every path and credential from the running backups container, and CI runs both on every push. A database backed up on an older release comes back on this one waiting for its migration, exactly as after an update: start it with the `migrate_db` command under [Updating](#updating). The weekly clean-machine drill restores the previous release's backups this way.
 
 ## Resource limits
 
