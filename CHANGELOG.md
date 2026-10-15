@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`sonarqube:26.9.0.129388-community` moved to `sonarqube:26.10.0.133078-community`.** The freshness check reported the lag; the deploy job booted the stack on the new image before this landed.
+
 ### Added
 
 - **The upgrade drill starts SonarQube's database migration, the way the README now tells an operator to.** SonarQube 26.10 changes the schema of a 26.9 database and, after the upgrade, waits in maintenance until someone starts the migration with `POST /api/system/migrate_db`. In maintenance its healthcheck fails and Traefik stops routing to it, so the step has to run inside the container. CI waited for `UP` that could not come, and the 26.10 refresh was reverted on 2026-10-13 and 2026-10-14. The README's Updating section gives the commands; the drill runs them when the server asks and only then.
