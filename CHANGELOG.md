@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.9.6] - 2026-10-16
+
 ### Security
 
 - **`traefik:3.7` was rebuilt upstream**; the pin moved from `sha256:1daf7eb7aa88…` to `sha256:0f6150202bc1…`. Same version, same tag, a rebuilt base image — the usual shape of a security fix in a base layer.
@@ -293,7 +297,8 @@ v1.2.0.
   deploy-and-test job that boots the stack and requires
   `/api/system/status` to report `UP` through Traefik.
 
-[Unreleased]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.5...HEAD
+[Unreleased]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.6...HEAD
+[1.9.6]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.5...v1.9.6
 [1.9.5]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.4...v1.9.5
 [1.9.4]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.3...v1.9.4
 [1.9.3]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.2...v1.9.3
