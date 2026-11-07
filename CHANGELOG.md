@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(no unreleased changes yet)_
+### Changed
+
+- **`sonarqube:26.10.0.133078-community` moved to `sonarqube:26.11.0.134175-community`.** The freshness check reported the lag; the deploy job booted the stack on the new image before this landed.
 
 ## [1.9.17] - 2026-11-06
 
