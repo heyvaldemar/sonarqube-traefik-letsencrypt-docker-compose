@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(no unreleased changes yet)_
+
+## [1.9.18] - 2026-11-08
+
 ### Security
 
 - **`sonarqube:26.10.0.133078-community` moved to `sonarqube:26.11.0.134175-community`.** SonarSource's notice for 26.10.0.133078 and earlier: they "trust compromised eMudhra certificate authorities". The 26.11 Docker image "no longer trusts emSign ECC Root CA - G3". The notice also names AAA Certificate Services, which cross-signed the same keys, and the 26.11 note does not say that root is gone.
@@ -374,7 +378,8 @@ v1.2.0.
   deploy-and-test job that boots the stack and requires
   `/api/system/status` to report `UP` through Traefik.
 
-[Unreleased]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.17...HEAD
+[Unreleased]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.18...HEAD
+[1.9.18]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.17...v1.9.18
 [1.9.17]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.16...v1.9.17
 [1.9.16]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.15...v1.9.16
 [1.9.15]: https://github.com/heyvaldemar/sonarqube-traefik-letsencrypt-docker-compose/compare/v1.9.14...v1.9.15
