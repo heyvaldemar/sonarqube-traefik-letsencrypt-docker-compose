@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Security
 
-- **`sonarqube:26.10.0.133078-community` moved to `sonarqube:26.11.0.134175-community`.** The freshness check reported the lag; the deploy job booted the stack on the new image before this landed.
+- **`sonarqube:26.10.0.133078-community` moved to `sonarqube:26.11.0.134175-community`.** SonarSource's notice for 26.10.0.133078 and earlier: they "trust compromised eMudhra certificate authorities". The 26.11 Docker image "no longer trusts emSign ECC Root CA - G3". The notice also names AAA Certificate Services, which cross-signed the same keys, and the 26.11 note does not say that root is gone.
+
+### Upgrading
+
+- **SonarQube now refuses to start on a nearly full disk.** From 26.11 it checks the volume that holds its Elasticsearch data and stops "if the free space is below 10% of the disk size, or below 150 GB on disks larger than 1.5 TB". Check `df` on the host before you pull.
+- **The Ruby, Rust and Scala analyzers are gone from Community Build, and so are the advanced reliability rules for Java and Python.** Their rules leave every quality profile, and their issues close on the next analysis.
+- **Migrate Security Hotspots only on 26.11 or later**, if you plan to (`api/hotspots/migrate_to_issues`). On 26.9 and 26.10 a known issue reopens hotspots you marked Safe or Fixed.
 
 ## [1.9.17] - 2026-11-06
 
