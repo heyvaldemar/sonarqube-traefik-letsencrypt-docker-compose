@@ -7,8 +7,8 @@
 # the pins from these lines — this block is the single source of truth.
 x-images:
   traefik: &traefik-image ${TRAEFIK_IMAGE_TAG:-traefik:${TRAEFIK_IMAGE_VERSION:-3.7@sha256:c1ea95f3b3eab04ba8868d201b8494e12284e424f7cec2127e3194bca1c6641c}}
-  postgres: &postgres-image ${SONARQUBE_POSTGRES_IMAGE_TAG:-postgres:${SONARQUBE_POSTGRES_IMAGE_VERSION:-17-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac}}
-  sonarqube: &sonarqube-image ${SONARQUBE_IMAGE_TAG:-sonarqube:${SONARQUBE_IMAGE_VERSION:-26.11.0.134175-community@sha256:1ce197471f5f2bac347694a336862fd2c23e9f57c6edb46acebbfbe70f2c7d9c}}
+  postgres: &postgres-image ${SONARQUBE_POSTGRES_IMAGE_TAG:-postgres:${SONARQUBE_POSTGRES_IMAGE_VERSION:-17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065}}
+  sonarqube: &sonarqube-image ${SONARQUBE_IMAGE_TAG:-sonarqube:${SONARQUBE_IMAGE_VERSION:-26.11.0.134175-community@sha256:65541accbdb92e27fe770fc6ba99988a3dd5a0c71ffafd67f88abfad366996fa}}
 
 networks:
   sonarqube-network:
